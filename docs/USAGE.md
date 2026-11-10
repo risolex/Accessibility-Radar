@@ -1,133 +1,148 @@
-# Guia de Uso — Accessibility Radar
+# 📘 Manual Completo de Uso — Accessibility Radar (Interface Gráfica & Terminal)
 
-Este documento detalha os três comandos da CLI, suas opções e os artefatos gerados.
-
-> Todos os comandos devem ser executados com o ambiente virtual **ativo** e a partir da raiz do projeto.
+Este manual ensina passo a passo como instalar, iniciar e utilizar todos os recursos do **Accessibility Radar**, tanto pela **Interface Gráfica Web (Web Studio)** quanto pelo **Terminal (CLI)**.
 
 ---
 
-## Visão geral dos comandos
+## 1. Instalação e Preparação do Ambiente (Do Zero)
 
-| Comando | O que faz | Alvo aceito |
-| :--- | :--- | :--- |
-| `scan` | Audita e gera relatório (não altera arquivos) | URL ou arquivo HTML local |
-| `fix` | Audita e aplica correções no código | Arquivo HTML local |
-| `demo` | Fluxo completo de ponta a ponta com revalidação | `tests/broken_page.html` (fixo) |
+Abra o **PowerShell** (ou terminal de sua preferência) e execute os comandos abaixo:
 
-Flag comum a todos: `--mock` força o **Smart Mock/Fallback** (sem consumir créditos de API).
-
----
-
-## `scan` — auditar sem alterar
-
-Renderiza a página, diagnostica os 4 pilares, imprime um dashboard colorido no terminal e salva o relatório.
-
-```bash
-python -m cli.main scan <alvo> [--output CAMINHO] [--mock]
+### Passo 1: Acessar a pasta do projeto
+```powershell
+cd "C:\Users\renan\projetosIA\accessibility radar"
 ```
 
-**Argumentos e opções**
+### Passo 2: Criar e ativar o ambiente virtual Python (Recomendado)
+```powershell
+# Cria o ambiente virtual
+python -m venv venv
 
-| Nome | Descrição | Padrão |
-| :--- | :--- | :--- |
-| `<alvo>` | URL (`https://...`) ou caminho de arquivo HTML local | — (obrigatório) |
-| `--output`, `-o` | Caminho do relatório Markdown | `reports/audit_report.md` |
-| `--mock` | Força o modo determinístico | desligado |
+# Ativa no Windows (PowerShell)
+.\venv\Scripts\Activate.ps1
 
-**Exemplos**
-
-```bash
-# Arquivo local
-python -m cli.main scan tests/broken_page.html
-
-# URL remota
-python -m cli.main scan https://example.com
-
-# Relatório em caminho customizado, modo mock
-python -m cli.main scan https://example.com -o relatorios/exemplo.md --mock
+# (No Linux/macOS use: source venv/bin/activate)
 ```
 
-**Artefatos gerados**
-- `reports/audit_report.md` — relatório executivo e técnico.
-- `reports/audit_results.json` — diagnóstico estruturado (útil para CI/CD).
-- `reports/latest_screenshot.png` — captura full-page.
+### Passo 3: Instalar as dependências e o navegador headless
+```powershell
+# Instala FastAPI, Uvicorn, Playwright, OpenAI, Typer, Rich, BeautifulSoup4, etc.
+pip install -r requirements.txt
+
+# Instala o navegador Chromium do Playwright
+playwright install chromium
+```
+> **Dica:** Mesmo que você não execute `playwright install chromium`, o sistema possui fallback automático para usar o **Google Chrome** ou **Microsoft Edge** já instalados no seu computador.
 
 ---
 
-## `fix` — corrigir o código
+## 2. Como Usar pela Interface Gráfica Web (Web Studio)
 
-Executa a auditoria, exibe os diffs "Antes/Depois" e aplica as correções.
+A Interface Gráfica oferece uma experiência visual completa com tema Claro/Escuro, mapas de calor sobre o screenshot, simulador de daltonismo e preview lado a lado.
 
-```bash
-python -m cli.main fix <arquivo> [--output CAMINHO] [--in-place] [--mock]
+### 2.1. Iniciando a Interface Gráfica
+No terminal, execute:
+```powershell
+python -m cli.main ui
+```
+- O servidor iniciará automaticamente (em `http://127.0.0.1:8000` ou `http://127.0.0.1:8080` caso a porta 8000 esteja ocupada) e abrirá seu navegador.
+- Outras opções úteis ao iniciar:
+  ```powershell
+  # Escolher uma porta específica
+  python -m cli.main ui --port 8080
+
+  # Iniciar o servidor sem abrir o navegador automaticamente
+  python -m cli.main ui --no-browser
+  ```
+
+---
+
+### 2.2. Barra de Comando Superior (Como Auditar Qualquer Página)
+No topo da interface, você encontra os controles globais:
+1. **Seletor de Modo de Entrada:**
+   - **URL / Arquivo Local:** Digite o endereço de qualquer site (ex.: `https://example.com` ou apenas `meusite.com.br`), um servidor local (`localhost:3000`) ou o caminho de um arquivo no projeto (`tests/broken_page.html`) e pressione **Enter** ou clique em **Auditar (Scan)**.
+   - **Colar HTML / Upload:** Abre o *Playground HTML ao Vivo*, onde você pode colar um código HTML diretamente ou enviar um arquivo `.html` do seu computador para testar na hora.
+2. **Seletor de Viewport (Tamanho de Tela):**
+   - Alterne entre **Desktop (`1280×900`)**, **Tablet (`768×1024`)** e **Mobile (`390×844`)** para auditar a responsividade da página.
+3. **Chave `Smart Mock`:**
+   - **Marcada:** Usa o motor determinístico local (100% gratuito, instantâneo e sem precisar de chave de API).
+   - **Desmarcada:** Usa o modelo de IA Multimodal (Vision) configurado na aba de configurações (`.env`).
+4. **Botão `🎃 Ciclo Autônomo (Demo)`:**
+   - Executa em 1 clique todo o fluxo de demonstração na página `tests/broken_page.html`: escaneia as 18 falhas (Score `0/100`), aplica os patches automaticamente em `reports/fixed_page.html` e re-audita no navegador comprovando o **Score `100/100`**.
+5. **Botão `◐` (Tema):**
+   - Alterna instantaneamente entre **Dark Mode** e **Light Mode**.
+
+---
+
+### 2.3. Os 7 Módulos da Barra Lateral (Sidebar)
+
+| Aba na Interface | Para que serve e como usar |
+| :--- | :--- |
+| **1. Dashboard & Auditoria** | Exibe o **Score WCAG 2.2 (0 a 100)**, o resumo dos **5 Pilares de Auditoria**, a contagem por severidade (`Critical`, `Serious`, `Moderate`, `Minor`) e a lista completa de falhas. Você pode clicar em qualquer pilar para filtrar, pesquisar por seletor CSS e copiar o patch de código individual. |
+| **2. Inspetor Visual & Foco** | Mostra o screenshot real da página com: <br>• **Hotspots de Violações:** Caixas vermelhas numeradas exatamente sobre os elementos com erro.<br>• **Mapa de Ordem de Foco (Tab):** Desenha a linha pontilhada numerada (`1 → 2 → 3...`) mostrando a sequência real da tecla `Tab`.<br>• **Versão Antes / Depois:** Alterna entre o screenshot original e o corrigido.<br>• **Simulador de Visão:** Aplica filtros matemáticos de **Protanopia**, **Deuteranopia**, **Tritanopia**, **Acromatopsia (P&B)** e **Baixa Visão / Catarata**. |
+| **3. Auto-Fixer & Diff Studio** | Permite **marcar/desmarcar** quais correções você quer aplicar, **editar o texto sugerido** (`alt`, `aria-label` ou cor hexadecimal) antes de corrigir, aplicar tudo com 1 clique e ver o **Live Preview Comparativo Lado a Lado** (página original vs. página corrigida rodando ao vivo). |
+| **4. A11y Tree & Leitor de Tela** | Exibe o **Simulador de Leitor de Tela (NVDA / VoiceOver)** comparando como cada elemento era lido antes e como passa a ser anunciado depois da correção, além das **Landmarks ARIA**, **Hierarquia de Cabeçalhos (`H1–H6`)** e busca na **Accessibility Tree** do Chromium. |
+| **5. Laboratório de Contraste** | Calculadora interativa da fórmula oficial de luminância da W3C. Escolha qualquer cor de texto e fundo para testar conformidade **AA (`4.5:1`)** e **AAA (`7.0:1`)**, ou clique em uma falha detectada na página para carregá-la na calculadora. |
+| **6. Histórico & Relatórios** | Lista todas as auditorias já executadas (com evolução do Score Inicial $\rightarrow$ Pós-Fix) e permite visualizar, copiar, imprimir/salvar em PDF ou baixar `audit_report.md`, `audit_results.json` e `fixed_page.html`. |
+| **7. Motor de IA & Config** | Permite configurar sua chave de API e escolher com 1 clique presets para **OpenRouter**, **OpenAI Oficial**, **Ollama (Local)** ou **Google Gemini**, salvando diretamente no arquivo `.env`. |
+
+---
+
+## 3. Como Usar pelo Terminal (CLI)
+
+Se preferir automatizar tarefas, integrar em pipelines CI/CD ou rodar tudo pelo terminal, a CLI oferece 4 comandos principais:
+
+| Comando | Descrição |
+| :--- | :--- |
+| `python -m cli.main ui` | Inicia o servidor da Interface Gráfica Web. |
+| `python -m cli.main demo` | Executa a demonstração completa (`broken_page.html` $\rightarrow$ `fixed_page.html` $\rightarrow$ revalidação `100/100`). |
+| `python -m cli.main scan <alvo>` | Audita uma URL ou arquivo HTML local e gera os relatórios em `reports/`. |
+| `python -m cli.main fix <arquivo>` | Audita um arquivo HTML local, exibe os diffs no terminal e aplica as correções. |
+
+### 3.1. Comando `demo` (Ciclo Completo no Terminal)
+```powershell
+# Executa no modo Smart Mock (sem consumir API externa)
+python -m cli.main demo --mock
+
+# Executa utilizando a chave de IA configurada no .env
+python -m cli.main demo
 ```
 
-**Argumentos e opções**
+### 3.2. Comando `scan` (Auditar Sites ou Arquivos Locais)
+```powershell
+# Auditar um arquivo HTML local
+python -m cli.main scan tests/broken_page.html --mock
 
-| Nome | Descrição | Padrão |
-| :--- | :--- | :--- |
-| `<arquivo>` | Caminho de arquivo HTML local | — (obrigatório) |
-| `--output`, `-o` | Caminho do HTML corrigido | `reports/fixed_page.html` |
-| `--in-place`, `-i` | Sobrescreve o arquivo original (cria backup `.bak`) | desligado |
-| `--mock` | Força o modo determinístico | desligado |
+# Auditar qualquer site da internet
+python -m cli.main scan https://example.com --mock
 
-**Exemplos**
+# Auditar um site simulando visualização Mobile (390x844) ou Tablet (768x1024)
+python -m cli.main scan https://example.com --viewport mobile --mock
 
-```bash
-# Gera a versão corrigida em reports/fixed_page.html
-python -m cli.main fix tests/broken_page.html
-
-# Salva em caminho específico
-python -m cli.main fix pagina.html -o pagina.corrigida.html
-
-# Aplica direto no original (backup pagina.html.bak é criado)
-python -m cli.main fix pagina.html --in-place
+# Salvar o relatório Markdown em um caminho personalizado
+python -m cli.main scan https://example.com --output meu_relatorio.md
 ```
 
-> O modo `--in-place` **modifica o arquivo original**. O backup `.bak` permite reverter, mas trabalhe sempre com controle de versão.
+### 3.3. Comando `fix` (Corrigir Código Automaticamente)
+```powershell
+# Gera o arquivo corrigido em reports/fixed_page.html (mantendo o original intacto)
+python -m cli.main fix tests/broken_page.html --mock
 
----
+# Salva o HTML corrigido em um caminho específico
+python -m cli.main fix tests/broken_page.html --output pagina_pronta.html --mock
 
-## `demo` — demonstração completa
-
-Fluxo autônomo de ciclo fechado sobre `tests/broken_page.html`:
-
-1. Escaneia a página quebrada.
-2. Gera `reports/audit_report.md`.
-3. Cria `reports/fixed_page.html`.
-4. **Re-audita** a página corrigida e compara o score antes/depois.
-
-```bash
-python -m cli.main demo [--mock]
+# Corrige o próprio arquivo original (cria automaticamente um backup .html.bak antes)
+python -m cli.main fix tests/broken_page.html --in-place --mock
 ```
 
 ---
 
-## Entendendo o relatório
+## 4. Arquivos Gerados Automaticamente (`reports/`)
 
-O `audit_report.md` contém:
+Sempre que você roda uma auditoria ou correção (seja pela Interface Gráfica ou pelo Terminal), os seguintes arquivos são salvos na pasta `reports/`:
 
-- **Cabeçalho** — alvo, título da página, data/hora (UTC), motor de análise usado e score.
-- **Resumo executivo** — distribuição de problemas por pilar e por severidade.
-- **Diagnóstico detalhado** — para cada violação: ID, pilar, critério WCAG, nível, severidade, seletor, descrição técnica, impacto no usuário, recomendação e os blocos de código **Antes** vs. **Depois**.
-
-**Severidades:** `critical`, `serious`, `moderate`, `minor`.
-
-**Score:** 0 a 100, calculado por penalidade ponderada de severidade. `100` com zero violações = conforme WCAG 2.2 AA (nos critérios verificados).
-
----
-
-## Modos de análise
-
-- **`ai_multimodal`** — usado quando há `AI_API_KEY` válida. Envia DOM filtrado + screenshot ao provedor Vision.
-- **`smart_fallback`** — usado quando não há chave, a chave é inválida, ou com `--mock`. Processa os dados reais do navegador com heurísticas determinísticas.
-
-Se a chamada de IA falhar (rede/autenticação), o agente faz fallback automático para o modo determinístico sem interromper a execução.
-
----
-
-## Dicas
-
-- Use `--mock` em CI/CD para resultados reproduzíveis e sem custo.
-- Para auditar várias páginas, chame `scan` em loop e use `--output` para separar os relatórios.
-- O `audit_results.json` é ideal para integrar com pipelines (ex.: falhar o build se o score ficar abaixo de um limite).
+- **`reports/audit_report.md`** — Relatório completo em Markdown com Scorecard, tabelas por pilar/severidade e blocos de código **Antes vs. Depois**.
+- **`reports/audit_results.json`** — Diagnóstico estruturado em JSON contendo todas as métricas, coordenadas visuais (`rect`), mapa de foco e árvore de acessibilidade.
+- **`reports/fixed_page.html`** — Código HTML com todas as correções aplicadas pelo Auto-Fixer.
+- **`reports/before_screenshot.png` / `after_screenshot.png`** — Capturas de tela de página inteira antes e depois da remediação.
+- **`reports/history.json`** — Histórico local de todas as auditorias executadas.
