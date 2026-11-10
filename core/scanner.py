@@ -638,25 +638,38 @@ class A11yScanner:
     @staticmethod
     def resolve_target_url(target: str) -> tuple[str, Optional[Path]]:
         """
-        Converte o alvo informado (URL HTTP/HTTPS ou caminho de arquivo local)
-        em uma URL navegável pelo Playwright e retorna também o `Path` local se aplicável.
+        Converte o alvo informado (URL HTTP/HTTPS, domínio sem esquema como 'example.com'
+        ou caminho de arquivo local) em uma URL navegável pelo Playwright e retorna também o `Path` local se aplicável.
         """
-        parsed = urlparse(target)
+        cleaned = (target or "").strip()
+        parsed = urlparse(cleaned)
         if parsed.scheme in ("http", "https"):
-            return target, None
+            return cleaned, None
         if parsed.scheme == "file":
             local_path = Path(parsed.path.lstrip("/")) if re.match(r"^/[A-Za-z]:", parsed.path) else Path(parsed.path)
-            return target, local_path
+            return cleaned, local_path
 
-        local_file = Path(target)
+        local_file = Path(cleaned)
         if not local_file.is_absolute():
             local_file = Path.cwd() / local_file
         local_file = local_file.resolve()
 
-        if not local_file.exists():
-            raise FileNotFoundError(f"Arquivo ou caminho local não encontrado: {local_file}")
+        if local_file.exists():
+            return local_file.as_uri(), local_file
 
-        return local_file.as_uri(), local_file
+        # Se não é um arquivo local existente e parece um domínio web (ex: google.com, localhost:3000)
+        if re.match(r"^localhost(:\d+)?(/.*)?$", cleaned, flags=re.IGNORECASE) or re.match(
+            r"^127\.0\.0\.1(:\d+)?(/.*)?$", cleaned
+        ):
+            return f"http://{cleaned}", None
+
+        if (
+            not cleaned.endswith((".html", ".htm"))
+            and re.match(r"^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+(:?\d+)?(/.*)?$", cleaned)
+        ):
+            return f"https://{cleaned}", None
+
+        raise FileNotFoundError(f"Arquivo local ou URL inválida: {cleaned}")
 
     async def _extract_accessibility_tree(self, page: Page) -> Dict[str, Any]:
         """
@@ -762,7 +775,32 @@ class A11yScanner:
             page = await context.new_page()
 
             try:
-                await page.goto(resolved_url, wait_until="networkidle", timeout=30000)
+                try:
+                    await page.goto(resolved_url, wait_until="networkidle", timeout=20000)
+                except Exception:
+                    # Fallback para sites pesados com conexões contínuas (analytics/websockets)
+                    await page.goto(resolved_url, wait_until="domcontentloaded", timeout=30000)
+                    await page.wait_for_timeout(1500)
+
+                # Se for uma URL remota, salva um snapshot local do DOM renderizado com <base href>
+                # para permitir que o Auto-Fixer e o Live Preview também funcionem em sites externos!
+                if local_path is None:
+                    try:
+                        rendered_html = await page.content()
+                        if "<base " not in rendered_html.lower() and "<head" in rendered_html.lower():
+                            rendered_html = re.sub(
+                                r"(<head[^>]*>)",
+                                rf'\1<base href="{resolved_url}">',
+                                rendered_html,
+                                count=1,
+                                flags=re.IGNORECASE,
+                            )
+                        snapshot_file = self.reports_dir / "remote_snapshot.html"
+                        snapshot_file.write_text(rendered_html, encoding="utf-8")
+                        local_path = snapshot_file
+                    except Exception:
+                        pass
+
                 # Captura de screenshot de página inteira
                 screenshot_bytes = await page.screenshot(full_page=True, type="png")
                 if save_screenshot:

@@ -1174,7 +1174,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     });
 
-    // Botões principais de Scan, Demo e Fix
+    // Botões principais de Scan, Demo e Fix + Tecla Enter no campo de URL
+    document.getElementById("scan-target-input")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            executeScan();
+        }
+    });
     document.getElementById("btn-run-scan")?.addEventListener("click", executeScan);
     document.getElementById("btn-run-demo")?.addEventListener("click", executeAutonomousDemo);
     document.getElementById("btn-quick-autofix")?.addEventListener("click", async () => {
