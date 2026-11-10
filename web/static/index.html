@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Accessibility Radar — Autonomous WCAG 2.2 Web Auditor & Auto-Fixer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <a href="#main-workspace" class="skip-link">Pular para o conteúdo principal</a>
+
+    <!-- Filtros SVG Matemáticos para Simulação de Deficiências Visuais (Daltonismo) -->
+    <svg class="sr-only-svg" aria-hidden="true" focusable="false">
+        <defs>
+            <filter id="vision-protanopia">
+                <feColorMatrix type="matrix" values="0.567, 0.433, 0, 0, 0  0.558, 0.442, 0, 0, 0  0, 0.242, 0.758, 0, 0  0, 0, 0, 1, 0" />
+            </filter>
+            <filter id="vision-deuteranopia">
+                <feColorMatrix type="matrix" values="0.625, 0.375, 0, 0, 0  0.7, 0.3, 0, 0, 0  0, 0.3, 0.7, 0, 0  0, 0, 0, 1, 0" />
+            </filter>
+            <filter id="vision-tritanopia">
+                <feColorMatrix type="matrix" values="0.95, 0.05, 0, 0, 0  0, 0.433, 0.567, 0, 0  0, 0.475, 0.525, 0, 0  0, 0, 0, 1, 0" />
+            </filter>
+            <filter id="vision-achromatopsia">
+                <feColorMatrix type="matrix" values="0.299, 0.587, 0.114, 0, 0  0.299, 0.587, 0.114, 0, 0  0.299, 0.587, 0.114, 0, 0  0, 0, 0, 1, 0" />
+            </filter>
+        </defs>
+    </svg>
+
+    <div class="app-shell">
+        <!-- SIDEBAR MINIMALISTA -->
+        <aside class="sidebar" aria-label="Navegação Principal">
+            <div class="sidebar-brand">
+                <div class="brand-logo" aria-hidden="true">⚡</div>
+                <div>
+                    <div class="brand-title">Accessibility Radar</div>
+                    <div class="brand-subtitle">WCAG 2.2 Autonomous Agent</div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav" aria-label="Módulos do Sistema">
+                <div class="nav-group-label">Auditoria & Remediação</div>
+                <button type="button" class="nav-item active" data-tab="overview">
+                    <span class="nav-icon" aria-hidden="true">◉</span>
+                    <span>Dashboard & Auditoria</span>
+                    <span class="nav-badge" id="nav-badge-issues">0</span>
+                </button>
+                <button type="button" class="nav-item" data-tab="visual">
+                    <span class="nav-icon" aria-hidden="true">⌖</span>
+                    <span>Inspetor Visual & Foco</span>
+                </button>
+                <button type="button" class="nav-item" data-tab="fixer">
+                    <span class="nav-icon" aria-hidden="true">✦</span>
+                    <span>Auto-Fixer & Diff Studio</span>
+                </button>
+                <button type="button" class="nav-item" data-tab="a11y-tree">
+                    <span class="nav-icon" aria-hidden="true">❖</span>
+                    <span>A11y Tree & Leitor de Tela</span>
+                </button>
+
+                <div class="nav-group-label">Ferramentas & Gestão</div>
+                <button type="button" class="nav-item" data-tab="contrast-lab">
+                    <span class="nav-icon" aria-hidden="true">◐</span>
+                    <span>Laboratório de Contraste</span>
+                </button>
+                <button type="button" class="nav-item" data-tab="reports">
+                    <span class="nav-icon" aria-hidden="true">▤</span>
+                    <span>Histórico & Relatórios</span>
+                </button>
+                <button type="button" class="nav-item" data-tab="settings">
+                    <span class="nav-icon" aria-hidden="true">⚙</span>
+                    <span>Motor de IA & Config</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="engine-status-card" id="sidebar-engine-card">
+                    <div class="status-dot online" id="engine-status-dot"></div>
+                    <div class="engine-status-info">
+                        <span class="engine-status-label">Motor Ativo</span>
+                        <strong id="engine-status-text">Smart Fallback (Determinístico)</strong>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ÁREA PRINCIPAL -->
+        <div class="main-area">
+            <!-- TOPBAR DE COMANDO UNIFICADA -->
+            <header class="topbar">
+                <div class="command-bar">
+                    <div class="input-mode-tabs" role="tablist" aria-label="Modo de entrada">
+                        <button type="button" class="mode-pill active" id="mode-btn-url" data-input-mode="url">
+                            URL / Arquivo Local
+                        </button>
+                        <button type="button" class="mode-pill" id="mode-btn-html" data-input-mode="html">
+                            Colar HTML / Upload
+                        </button>
+                    </div>
+
+                    <div class="target-input-wrapper" id="url-input-group">
+                        <label for="scan-target-input" class="sr-only">URL ou caminho do arquivo HTML local</label>
+                        <input
+                            id="scan-target-input"
+                            type="text"
+                            class="target-input"
+                            value="tests/broken_page.html"
+                            placeholder="Ex: tests/broken_page.html ou https://example.com"
+                        />
+                        <div class="quick-presets">
+                            <button type="button" class="preset-chip" data-preset-target="tests/broken_page.html" title="Página quebrada de demonstração">
+                                broken_page.html
+                            </button>
+                            <button type="button" class="preset-chip" data-preset-target="reports/fixed_page.html" title="Página corrigida pelo agente">
+                                fixed_page.html
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="controls-group">
+                        <label for="viewport-select" class="sr-only">Selecionar Viewport</label>
+                        <select id="viewport-select" class="control-select" title="Tamanho da tela de renderização Playwright">
+                            <option value="desktop">Desktop (1280×900)</option>
+                            <option value="tablet">Tablet (768×1024)</option>
+                            <option value="mobile">Mobile (390×844)</option>
+                        </select>
+
+                        <label class="toggle-control" title="Forçar motor determinístico sem consumir créditos de API">
+                            <input type="checkbox" id="force-mock-checkbox" checked />
+                            <span>Smart Mock</span>
+                        </label>
+
+                        <button type="button" id="btn-run-scan" class="btn btn-secondary">
+                            <span>Auditar (Scan)</span>
+                        </button>
+
+                        <button type="button" id="btn-run-demo" class="btn btn-primary" title="Executa Scan -> Diagnóstico -> Auto-Fix -> Revalidação 100/100">
+                            <span>🎃 Ciclo Autônomo (Demo)</span>
+                        </button>
+
+                        <button type="button" id="btn-theme-toggle" class="btn-icon" aria-label="Alternar tema claro ou escuro" title="Alternar tema Claro/Escuro">
+                            ◐
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gaveta expansível para Colar HTML / Upload de arquivo -->
+                <div class="raw-html-drawer hidden" id="raw-html-drawer">
+                    <div class="drawer-header">
+                        <strong>Playground HTML ao Vivo</strong>
+                        <div class="drawer-actions">
+                            <label for="html-file-upload" class="btn btn-xs btn-ghost">
+                                Carregar arquivo .html
+                            </label>
+                            <input type="file" id="html-file-upload" accept=".html,.htm" class="sr-only" />
+                            <button type="button" id="btn-load-sample-broken" class="btn btn-xs btn-ghost">
+                                Inserir snippet com falhas
+                            </button>
+                        </div>
+                    </div>
+                    <label for="raw-html-textarea" class="sr-only">Código HTML para auditar</label>
+                    <textarea
+                        id="raw-html-textarea"
+                        class="code-textarea"
+                        rows="6"
+                        placeholder="Cole aqui seu código HTML completo ou componente para auditar e corrigir instantaneamente..."
+                    ></textarea>
+                </div>
+            </header>
+
+            <!-- BARRA DE PROGRESSO DO PIPELINE -->
+            <div class="pipeline-Overlay hidden" id="pipeline-status-bar" role="status" aria-live="polite">
+                <div class="spinner"></div>
+                <div class="pipeline-steps">
+                    <span id="pipeline-step-text">Iniciando navegador Chromium headless via Playwright...</span>
+                </div>
+            </div>
+
+            <!-- WORKSPACE PRINCIPAL -->
+            <main id="main-workspace" class="workspace">
+
+                <!-- ========================================================= -->
+                <!-- TAB 1: DASHBOARD & CENTRAL DE AUDITORIA                   -->
+                <!-- ========================================================= -->
+                <section class="tab-panel active" id="tab-overview" aria-label="Dashboard e Central de Auditoria">
+                    <!-- Banner Comparativo Pós-Correção (visível quando há revalidação) -->
+                    <div class="verification-banner hidden" id="verification-banner">
+                        <div class="verification-left">
+                            <span class="verification-badge">CICLO FECHADO VALIDADO</span>
+                            <div>
+                                <h2 id="verification-title">Auto-Correção Comprovada no Navegador Real</h2>
+                                <p id="verification-subtitle">O Playwright re-auditou a página corrigida e confirmou a eliminação das violações.</p>
+                            </div>
+                        </div>
+                        <div class="verification-metrics">
+                            <div class="v-metric">
+                                <span class="v-label">Score Inicial</span>
+                                <strong class="v-val before" id="v-score-before">0</strong>
+                            </div>
+                            <span class="v-arrow" aria-hidden="true">→</span>
+                            <div class="v-metric">
+                                <span class="v-label">Score Final</span>
+                                <strong class="v-val after" id="v-score-after">100</strong>
+                            </div>
+                            <div class="v-divider"></div>
+                            <div class="v-metric">
+                                <span class="v-label">Falhas Corrigidas</span>
+                                <strong class="v-val after" id="v-issues-fixed">16 → 0</strong>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary" id="btn-jump-to-preview">
+                                Ver Preview Antes vs. Depois →
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Linha Superior: Score Gauge + 5 Pilares + Severidade -->
+                    <div class="dashboard-top-grid">
+                        <!-- Card de Score WCAG -->
+                        <div class="card score-card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">Score de Acessibilidade</span>
+                                <span class="wcag-tag">WCAG 2.2 A & AA</span>
+                            </div>
+                            <div class="score-gauge-wrapper">
+                                <svg class="score-ring" viewBox="0 0 120 120" aria-hidden="true">
+                                    <circle class="score-ring-bg" cx="60" cy="60" r="50" />
+                                    <circle class="score-ring-fill" id="score-ring-circle" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="314.16" />
+                                </svg>
+                                <div class="score-center">
+                                    <span class="score-number" id="metric-score-value">--</span>
+                                    <span class="score-max">/ 100</span>
+                                </div>
+                            </div>
+                            <div class="score-status-pill" id="metric-wcag-status">Aguardando auditoria</div>
+                            <div class="score-meta-list">
+                                <div class="meta-row">
+                                    <span>Alvo:</span>
+                                    <code id="metric-target-label">tests/broken_page.html</code>
+                                </div>
+                                <div class="meta-row">
+                                    <span>DOM / Idioma:</span>
+                                    <strong id="metric-dom-info">-- nós • lang: --</strong>
+                                </div>
+                                <div class="meta-row">
+                                    <span>Viewport:</span>
+                                    <strong id="metric-viewport-info">desktop (1280×900)</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card dos 5 Pilares de Auditoria -->
+                        <div class="card pillars-card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">Os 5 Pilares de Auditoria</span>
+                                <span class="text-muted" id="metric-total-issues-badge">0 violações</span>
+                            </div>
+                            <div class="pillars-list" id="pillars-breakdown-list">
+                                <!-- Preenchido via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Card de Severidade e Ações Rápidas -->
+                        <div class="card severity-card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">Distribuição por Severidade</span>
+                            </div>
+                            <div class="severity-bars" id="severity-breakdown-list">
+                                <!-- Preenchido via JS -->
+                            </div>
+                            <div class="quick-actions-box">
+                                <button type="button" class="btn btn-primary btn-block" id="btn-quick-autofix">
+                                    ✦ Auto-Corrigir Todas as Falhas
+                                </button>
+                                <div class="quick-actions-row">
+                                    <button type="button" class="btn btn-ghost btn-sm" id="btn-open-visual-hotspot">
+                                        ⌖ Ver Hotspots no Screenshot
+                                    </button>
+                                    <button type="button" class="btn btn-ghost btn-sm" id="btn-export-md">
+                                        ↓ Baixar Relatório (.md)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Barra de Filtros da Lista de Violações -->
+                    <div class="card issues-section-card">
+                        <div class="issues-toolbar">
+                            <div class="issues-toolbar-left">
+                                <h2 class="section-title">Diagnóstico Detalhado de Violações</h2>
+                                <div class="filter-pills" id="pillar-filter-pills" role="group" aria-label="Filtrar por pilar">
+                                    <button type="button" class="filter-pill active" data-pillar-filter="all">Todos</button>
+                                    <button type="button" class="filter-pill" data-pillar-filter="contrast_visibility">1. Contraste</button>
+                                    <button type="button" class="filter-pill" data-pillar-filter="muted_interactives">2. Interativos Mudos</button>
+                                    <button type="button" class="filter-pill" data-pillar-filter="media_semantics">3. Mídia & Vision</button>
+                                    <button type="button" class="filter-pill" data-pillar-filter="focus_keyboard">4. Foco & Teclado</button>
+                                    <button type="button" class="filter-pill" data-pillar-filter="semantic_structure">5. Estrutura</button>
+                                </div>
+                            </div>
+                            <div class="issues-toolbar-right">
+                                <label for="severity-filter-select" class="sr-only">Filtrar por severidade</label>
+                                <select id="severity-filter-select" class="control-select">
+                                    <option value="all">Todas as severidades</option>
+                                    <option value="critical">Crítico (Critical)</option>
+                                    <option value="serious">Sério (Serious)</option>
+                                    <option value="moderate">Moderado (Moderate)</option>
+                                    <option value="minor">Menor (Minor)</option>
+                                </select>
+                                <label for="issue-search-input" class="sr-only">Buscar violação</label>
+                                <input
+                                    type="search"
+                                    id="issue-search-input"
+                                    class="search-input"
+                                    placeholder="Buscar seletor, critério WCAG ou texto..."
+                                />
+                            </div>
+                        </div>
+
+                        <div class="issues-list-container" id="issues-list-container">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- TAB 2: INSPETOR VISUAL, MAPA DE FOCO & SIMULADOR VISUAL   -->
+                <!-- ========================================================= -->
+                <section class="tab-panel" id="tab-visual" aria-label="Inspetor Visual e Mapa de Foco">
+                    <div class="visual-toolbar card">
+                        <div class="visual-toolbar-group">
+                            <span class="toolbar-label">Camada Visual:</span>
+                            <div class="segmented-control">
+                                <button type="button" class="seg-btn active" data-overlay-mode="issues">
+                                    Hotspots de Violações
+                                </button>
+                                <button type="button" class="seg-btn" data-overlay-mode="taborder">
+                                    Mapa de Ordem de Foco (Tab)
+                                </button>
+                                <button type="button" class="seg-btn" data-overlay-mode="none">
+                                    Screenshot Limpo
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="visual-toolbar-group">
+                            <span class="toolbar-label">Versão da Página:</span>
+                            <div class="segmented-control">
+                                <button type="button" class="seg-btn active" data-screenshot-ver="before">
+                                    Antes (Original)
+                                </button>
+                                <button type="button" class="seg-btn" data-screenshot-ver="after" id="btn-screenshot-after">
+                                    Depois (Corrigida)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="visual-toolbar-group">
+                            <label for="vision-sim-select" class="toolbar-label">Simulador de Visão:</label>
+                            <select id="vision-sim-select" class="control-select">
+                                <option value="normal">Visão Padrão (Sem Filtro)</option>
+                                <option value="protanopia">Protanopia (Deficiência Vermelho)</option>
+                                <option value="deuteranopia">Deuteranopia (Deficiência Verde)</option>
+                                <option value="tritanopia">Tritanopia (Deficiência Azul)</option>
+                                <option value="achromatopsia">Acromatopsia (Monocromático)</option>
+                                <option value="low-vision">Baixa Visão / Catarata (Blur)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="visual-split-layout">
+                        <!-- Canvas do Screenshot com SVG/HTML Overlays -->
+                        <div class="card visual-stage-card">
+                            <div class="visual-stage-scroll" id="visual-stage-scroll">
+                                <div class="screenshot-canvas" id="screenshot-canvas">
+                                    <img
+                                        id="inspector-screenshot-img"
+                                        src="/reports/latest_screenshot.png"
+                                        alt="Screenshot completo da página auditada pelo Playwright"
+                                    />
+                                    <svg class="focus-path-svg" id="focus-path-svg" aria-hidden="true"></svg>
+                                    <div class="hotspots-layer" id="hotspots-layer"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Painel Lateral de Detalhes do Pino Selecionado / Sequência de Tab -->
+                        <div class="card visual-sidebar-card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker" id="visual-sidebar-title">Elementos Mapeados na Página</span>
+                            </div>
+                            <div class="visual-sidebar-list" id="visual-sidebar-list">
+                                <!-- Lista interativa de hotspots ou ordem de foco -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- TAB 3: AUTO-FIXER & DIFF STUDIO (PREVIEW LADO A LADO)     -->
+                <!-- ========================================================= -->
+                <section class="tab-panel" id="tab-fixer" aria-label="Auto-Fixer e Estúdio de Diffs">
+                    <div class="fixer-header-card card">
+                        <div class="fixer-header-info">
+                            <h2 class="section-title">Estúdio Cirúrgico de Auto-Remediação DOM</h2>
+                            <p class="text-muted">
+                                Selecione quais correções deseja aplicar, personalize os atributos sugeridos (`alt`, `aria-label`, cores) se desejar e compare o resultado ao vivo.
+                            </p>
+                        </div>
+                        <div class="fixer-header-actions">
+                            <label class="toggle-control">
+                                <input type="checkbox" id="fixer-select-all" checked />
+                                <span>Selecionar Todas (<strong id="fixer-selected-count">0</strong>)</span>
+                            </label>
+                            <label class="toggle-control" title="Cria backup .bak e sobrescreve o arquivo original">
+                                <input type="checkbox" id="fixer-inplace-checkbox" />
+                                <span>Aplicar In-Place (.bak)</span>
+                            </label>
+                            <button type="button" class="btn btn-primary" id="btn-apply-selected-fixes">
+                                ✦ Aplicar Correções & Revalidar no Navegador
+                            </button>
+                            <a href="/reports/fixed_page.html" download="fixed_page.html" class="btn btn-secondary" id="btn-download-fixed-html">
+                                ↓ Baixar HTML Corrigido
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Sub-abas do Fixer: Patches & Editor vs Live Preview Lado a Lado -->
+                    <div class="subtabs-bar">
+                        <button type="button" class="subtab-btn active" data-fixer-view="patches">
+                            Patches de Código (Antes vs. Depois)
+                        </button>
+                        <button type="button" class="subtab-btn" data-fixer-view="live-preview">
+                            Live Preview Comparativo (Página Quebrada vs. Corrigida)
+                        </button>
+                    </div>
+
+                    <!-- Visão 1: Lista de Patches com Edição Customizada -->
+                    <div class="fixer-view active" id="fixer-view-patches">
+                        <div class="patches-grid" id="fixer-patches-container">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Visão 2: Iframes Lado a Lado (Antes vs Depois) -->
+                    <div class="fixer-view hidden" id="fixer-view-live-preview">
+                        <div class="split-preview-grid">
+                            <div class="card preview-pane">
+                                <div class="preview-pane-header before">
+                                    <span>❌ ANTES — Página Original com Violações</span>
+                                    <code id="preview-before-label">tests/broken_page.html</code>
+                                </div>
+                                <iframe id="iframe-preview-before" class="preview-iframe" title="Preview da página antes da correção" src="/preview/broken"></iframe>
+                            </div>
+                            <div class="card preview-pane">
+                                <div class="preview-pane-header after">
+                                    <span>✅ DEPOIS — Página Remediada pelo Accessibility Radar</span>
+                                    <code>reports/fixed_page.html</code>
+                                </div>
+                                <iframe id="iframe-preview-after" class="preview-iframe" title="Preview da página após a correção" src="about:blank"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- TAB 4: ACCESSIBILITY TREE & SIMULADOR DE LEITOR DE TELA   -->
+                <!-- ========================================================= -->
+                <section class="tab-panel" id="tab-a11y-tree" aria-label="Árvore de Acessibilidade e Simulador de Leitor de Tela">
+                    <div class="a11y-grid">
+                        <!-- Coluna 1: Simulador de Leitor de Tela (NVDA / VoiceOver) -->
+                        <div class="card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">🔊 Simulador de Leitor de Tela (NVDA / VoiceOver)</span>
+                                <span class="wcag-tag">Experiência Auditiva</span>
+                            </div>
+                            <p class="panel-desc">
+                                Veja exatamente como tecnologias assistivas anunciam os controles da página para pessoas cegas <strong>antes</strong> e <strong>depois</strong> da atuação do Accessibility Radar.
+                            </p>
+                            <div class="sr-simulator-list" id="sr-simulator-list">
+                                <!-- Preenchido via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Coluna 2: Estrutura do Documento (Headings H1-H6 & Landmarks) -->
+                        <div class="card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">📑 Esqueleto Semântico (Headings & Landmarks)</span>
+                                <span class="wcag-tag">WCAG 1.3.1 / 2.4.1</span>
+                            </div>
+                            <div class="outline-section">
+                                <h3 class="sub-heading">Regiões Landmark ARIA</h3>
+                                <div class="landmarks-chips" id="outline-landmarks-list"></div>
+                            </div>
+                            <div class="outline-section">
+                                <h3 class="sub-heading">Hierarquia de Cabeçalhos (H1–H6)</h3>
+                                <div class="headings-tree" id="outline-headings-list"></div>
+                            </div>
+                        </div>
+
+                        <!-- Coluna 3: Nós da Accessibility Tree do Navegador -->
+                        <div class="card a11y-full-col">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">🌳 Snapshot da Accessibility Tree (Chromium AXTree)</span>
+                                <input type="search" id="ax-tree-search" class="search-input" placeholder="Filtrar por role ou nome acessível..." />
+                            </div>
+                            <div class="ax-nodes-grid" id="ax-nodes-container">
+                                <!-- Preenchido via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- TAB 5: LABORATÓRIO DE CONTRASTE W3C                       -->
+                <!-- ========================================================= -->
+                <section class="tab-panel" id="tab-contrast-lab" aria-label="Laboratório e Calculadora de Contraste W3C">
+                    <div class="contrast-lab-grid">
+                        <div class="card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">Calculadora Matemática de Luminância W3C (WCAG 1.4.3 / 1.4.6)</span>
+                            </div>
+                            <div class="color-pickers-row">
+                                <div class="color-picker-box">
+                                    <label for="lab-fg-hex">Cor do Texto (Foreground)</label>
+                                    <div class="color-input-group">
+                                        <input type="color" id="lab-fg-picker" value="#b4b8c2" aria-label="Seletor visual da cor do texto" />
+                                        <input type="text" id="lab-fg-hex" class="target-input mono" value="#b4b8c2" maxlength="7" />
+                                    </div>
+                                </div>
+
+                                <button type="button" class="btn btn-ghost btn-swap" id="btn-swap-colors" title="Inverter cores de texto e fundo" aria-label="Inverter cores">
+                                    ⇄
+                                </button>
+
+                                <div class="color-picker-box">
+                                    <label for="lab-bg-hex">Cor de Fundo (Background)</label>
+                                    <div class="color-input-group">
+                                        <input type="color" id="lab-bg-picker" value="#f8fafc" aria-label="Seletor visual da cor de fundo" />
+                                        <input type="text" id="lab-bg-hex" class="target-input mono" value="#f8fafc" maxlength="7" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="contrast-preview-banner" id="lab-preview-box">
+                                <div class="preview-large-text">Texto Grande (18pt+ ou 14pt Bold) — KiroGear 50% OFF</div>
+                                <div class="preview-normal-text">
+                                    Texto Normal (16px) — A acessibilidade web garante que todas as pessoas possam perceber, entender, navegar e interagir com a web.
+                                </div>
+                            </div>
+
+                            <div class="contrast-results-row">
+                                <div class="contrast-ratio-big">
+                                    <span class="ratio-kicker">Razão de Contraste</span>
+                                    <strong id="lab-ratio-value">1.93:1</strong>
+                                </div>
+                                <div class="wcag-matrix-badges">
+                                    <div class="matrix-item" id="badge-aa-normal">
+                                        <span>AA Texto Normal (≥4.5:1)</span>
+                                        <strong>FALHA</strong>
+                                    </div>
+                                    <div class="matrix-item" id="badge-aa-large">
+                                        <span>AA Texto Grande (≥3.0:1)</span>
+                                        <strong>FALHA</strong>
+                                    </div>
+                                    <div class="matrix-item" id="badge-aaa-normal">
+                                        <span>AAA Texto Normal (≥7.0:1)</span>
+                                        <strong>FALHA</strong>
+                                    </div>
+                                    <div class="matrix-item" id="badge-ui-comp">
+                                        <span>Componentes UI (≥3.0:1)</span>
+                                        <strong>FALHA</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="contrast-suggestion-bar" id="lab-suggestion-bar">
+                                <div>
+                                    <span>Sugestão Automática do Agente:</span>
+                                    <strong id="lab-suggested-text">Usar #1a202c (Contraste 15.4:1)</strong>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-primary" id="btn-apply-suggested-color">
+                                    Testar Cor Sugerida
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">Pares de Cores Detectados na Última Auditoria</span>
+                            </div>
+                            <p class="panel-desc">Clique em qualquer violação de contraste da página para carregá-la na calculadora ao lado:</p>
+                            <div class="detected-contrasts-list" id="detected-contrasts-list">
+                                <!-- Preenchido via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- TAB 6: HISTÓRICO & RELATÓRIOS EXPORTÁVEIS                 -->
+                <!-- ========================================================= -->
+                <section class="tab-panel" id="tab-reports" aria-label="Histórico de Auditorias e Exportação de Relatórios">
+                    <div class="reports-layout">
+                        <div class="card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">Histórico de Auditorias Realizadas</span>
+                                <button type="button" class="btn btn-xs btn-ghost" id="btn-clear-history">Limpar Histórico</button>
+                            </div>
+                            <div class="history-table-wrapper">
+                                <table class="minimal-table" id="history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data / Hora</th>
+                                            <th>Alvo Auditado</th>
+                                            <th>Viewport</th>
+                                            <th>Score Inicial</th>
+                                            <th>Pós-Fix</th>
+                                            <th>Violações</th>
+                                            <th>Motor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="history-table-body">
+                                        <!-- Preenchido via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">Exportação & Relatório Markdown (`reports/audit_report.md`)</span>
+                                <div class="export-buttons">
+                                    <button type="button" class="btn btn-sm btn-secondary" id="btn-copy-markdown">
+                                        Copiar Markdown
+                                    </button>
+                                    <a href="/reports/audit_report.md" download="audit_report.md" class="btn btn-sm btn-secondary">
+                                        ↓ audit_report.md
+                                    </a>
+                                    <a href="/reports/audit_results.json" download="audit_results.json" class="btn btn-sm btn-secondary">
+                                        ↓ audit_results.json
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-primary" id="btn-print-report">
+                                        🖨️ Imprimir / Salvar PDF
+                                    </button>
+                                </div>
+                            </div>
+                            <pre class="markdown-viewer" id="markdown-report-viewer">Execute uma auditoria para visualizar o relatório Markdown completo.</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- TAB 7: CONFIGURAÇÕES DE IA & PROVEDORES (.ENV)            -->
+                <!-- ========================================================= -->
+                <section class="tab-panel" id="tab-settings" aria-label="Configurações de IA Multimodal">
+                    <div class="settings-grid">
+                        <div class="card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">Configuração do Provedor Multimodal (OpenAI SDK Compatible)</span>
+                            </div>
+                            <p class="panel-desc">
+                                O Accessibility Radar funciona <strong>100% sem chave de API</strong> através do motor determinístico <em>Smart Fallback</em>. Caso deseje utilizar um LLM com Visão Computacional, selecione um preset abaixo ou configure seu endpoint:
+                            </p>
+
+                            <div class="provider-presets">
+                                <button type="button" class="preset-card" data-provider-preset="openrouter">
+                                    <strong>OpenRouter</strong>
+                                    <span>openai/gpt-4o-mini</span>
+                                </button>
+                                <button type="button" class="preset-card" data-provider-preset="openai">
+                                    <strong>OpenAI Oficial</strong>
+                                    <span>gpt-4o-mini</span>
+                                </button>
+                                <button type="button" class="preset-card" data-provider-preset="ollama">
+                                    <strong>Ollama (Local)</strong>
+                                    <span>llava / llama3.2-vision</span>
+                                </button>
+                                <button type="button" class="preset-card" data-provider-preset="gemini">
+                                    <strong>Google Gemini</strong>
+                                    <span>gemini-2.0-flash</span>
+                                </button>
+                            </div>
+
+                            <form id="settings-form" class="settings-form">
+                                <div class="form-field">
+                                    <label for="setting-base-url">AI_BASE_URL (Endpoint compatível com OpenAI)</label>
+                                    <input type="url" id="setting-base-url" class="target-input mono" value="https://openrouter.ai/api/v1" required />
+                                </div>
+                                <div class="form-field">
+                                    <label for="setting-api-key">AI_API_KEY (Deixe em branco para usar apenas Smart Mock)</label>
+                                    <input type="password" id="setting-api-key" class="target-input mono" placeholder="sk-or-v1-..." autocomplete="off" />
+                                    <small class="field-hint" id="setting-key-status">Nenhuma chave configurada — Modo Smart Fallback ativo.</small>
+                                </div>
+                                <div class="form-row-2">
+                                    <div class="form-field">
+                                        <label for="setting-model-text">AI_MODEL_TEXT</label>
+                                        <input type="text" id="setting-model-text" class="target-input mono" value="openai/gpt-4o-mini" required />
+                                    </div>
+                                    <div class="form-field">
+                                        <label for="setting-model-vision">AI_MODEL_VISION</label>
+                                        <input type="text" id="setting-model-vision" class="target-input mono" value="openai/gpt-4o-mini" required />
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary">Salvar Configurações no .env</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header-minimal">
+                                <span class="card-kicker">Equivalência com a CLI (Terminal)</span>
+                            </div>
+                            <p class="panel-desc">Todos os comandos executados nesta interface também estão disponíveis via linha de comando:</p>
+                            <div class="cli-cheatsheet">
+                                <div class="cli-cmd-item">
+                                    <span>Iniciar esta Interface Web</span>
+                                    <code>python -m cli.main ui</code>
+                                </div>
+                                <div class="cli-cmd-item">
+                                    <span>Executar Ciclo Completo de Demonstração</span>
+                                    <code>python -m cli.main demo --mock</code>
+                                </div>
+                                <div class="cli-cmd-item">
+                                    <span>Auditar URL ou Arquivo Local</span>
+                                    <code>python -m cli.main scan tests/broken_page.html</code>
+                                </div>
+                                <div class="cli-cmd-item">
+                                    <span>Auto-Corrigir Arquivo HTML</span>
+                                    <code>python -m cli.main fix tests/broken_page.html</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast de Notificação Minimalista -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
